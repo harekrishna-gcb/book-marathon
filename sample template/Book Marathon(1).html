@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Book Marathon</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#faf8f4;--card:#fff;--tx:#1f2430;--mu:#6b7280;--bd:#e5e1d8;--ac:#c2410c;--ac2:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181c;--card:#212329;--tx:#eceae4;--mu:#9aa0ab;--bd:#33363e;--ac:#fb923c;--ac2:#1a1a1a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17181c;--card:#212329;--tx:#eceae4;--mu:#9aa0ab;--bd:#33363e;--ac:#fb923c;--ac2:#1a1a1a;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:18px 16px 8px;max-width:1000px;margin:auto}h1{margin:0;font:700 24px Georgia,serif}
+nav{display:flex;gap:6px;flex-wrap:wrap;max-width:1000px;margin:8px auto;padding:0 16px}
+nav button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font:inherit}
+nav button.on{background:var(--ac);color:var(--ac2);border-color:var(--ac)}
+main{max-width:1000px;margin:auto;padding:8px 16px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+h2{font-size:16px;margin:0 0 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}.stat b{display:block;font-size:26px;color:var(--ac)}.stat span{color:var(--mu);font-size:13px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end}
+label{font-size:12px;color:var(--mu);display:block}
+input,select{width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.btn{background:var(--ac);color:var(--ac2);border:0;padding:9px 16px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600}
+.btn.g{background:transparent;color:var(--mu);border:1px solid var(--bd);padding:3px 8px;font-weight:400}
+.sc{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:480px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd)}th{font-size:12px;color:var(--mu);text-transform:uppercase}
+.low{color:#dc2626;font-weight:600}nav{position:sticky;top:0;background:var(--bg);z-index:5;padding-bottom:8px}input,select{font-size:16px;min-height:40px}.btn{min-height:40px}.btn.g{min-height:0}.msg{color:var(--ac);font-weight:600}ol{padding-left:20px;margin:0 0 12px}li{margin-bottom:4px}.mu{color:var(--mu);font-size:13px}.msg{margin-top:8px;font-size:13px}
+</style></head><body>
+<header><h1>📚 Book Marathon</h1><div class="mu">Srila Prabhupada’s books · stock, sales and team tracker</div></header>
+<nav id="nav"></nav><main id="app"></main>
+<script>
+const K='bookmarathon.v1';let S={books:[],sales:[],users:[]},tab='dash',msg='',umsg='',qb='',qs='',last={u:'',a:'',d:''};
+try{const r=localStorage.getItem(K);if(r)S=JSON.parse(r)}catch(e){}
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const sold=id=>S.sales.filter(s=>s.book===id).reduce((a,s)=>a+s.qty,0);
+const bk=id=>S.books.find(b=>b.id===id);
+const tabs={dash:'Dashboard',books:'Books',sales:'Sales',lb:'🏆 Leaderboard',users:'Teams & users'};
+function nav(){document.getElementById('nav').innerHTML=Object.entries(tabs).map(([k,v])=>`<button class="${k===tab?'on':''}" onclick="tab='${k}';msg='';render()">${v}</button>`).join('')}
+function group(rows,keyFn,valFn){const m={};rows.forEach(r=>{const k=keyFn(r)||'—';m[k]=(m[k]||0)+valFn(r)});return Object.entries(m).sort((a,b)=>b[1]-a[1])}
+function tbl(h,rows){return `<div class="sc"><table><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.join('')||`<tr><td colspan="${h.length}" class="mu">Nothing yet.</td></tr>`}</table></div>`}
+function dash(){
+ const tot=S.books.reduce((a,b)=>a+b.qty,0),so=S.sales.reduce((a,s)=>a+s.qty,0);
+ const cats={};S.books.forEach(b=>{const c=b.category||'Uncategorised';cats[c]=cats[c]||{t:0,q:0,s:0};cats[c].t++;cats[c].q+=b.qty;cats[c].s+=sold(b.id)});
+ const bySeller=group(S.sales,s=>(S.users.find(u=>u.id===s.user)||{}).name,s=>s.qty);
+ const byArea=group(S.sales,s=>s.area,s=>s.qty);
+ return `${S.books.length?'':`<div class="card"><h2>👋 Welcome! Start here</h2><ol><li><b>Books:</b> upload your book list (CSV or Excel) or add books one by one.</li><li><b>Teams &amp; users:</b> register the people or teams who sell.</li><li><b>Sales:</b> record each sale, or upload a sales file.</li></ol><button class="btn" onclick="tab='books';render()">Go to Books →</button></div>`}<div class="stats"><div class="stat"><b>${S.books.length}</b><span>Titles</span></div><div class="stat"><b>${tot}</b><span>Total stock received</span></div><div class="stat"><b>${so}</b><span>Sold</span></div><div class="stat"><b>₹${S.sales.reduce((a,s)=>a+s.qty*((bk(s.book)||{}).price||0),0).toLocaleString('en-IN')}</b><span>Sales amount</span></div><div class="stat"><b>${tot-so}</b><span>Available</span></div></div>
+ <div class="card"><h2>Stock by book</h2>${tbl(['#','Book','Category','In stock','Sold','Available'],S.books.map((b,i)=>{const s=sold(b.id),a=b.qty-s;return `<tr><td>${i+1}</td><td>${esc(b.title)}</td><td>${esc(b.category)}</td><td>${b.qty}</td><td>${s}</td><td class="${a<=5?'low':''}"><b>${a}</b></td></tr>`}))}</div>
+ <div class="card"><h2>By category</h2>${tbl(['Category','Titles','Stock','Sold','Available'],Object.entries(cats).map(([c,v])=>`<tr><td>${esc(c)}</td><td>${v.t}</td><td>${v.q}</td><td>${v.s}</td><td>${v.q-v.s}</td></tr>`))}</div>
+ <div class="card"><h2>Sold by person / team</h2>${tbl(['Name','Copies sold'],bySeller.map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v}</td></tr>`))}</div>
+ <div class="card"><h2>Sold by area</h2>${tbl(['Area','Copies sold'],byArea.map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v}</td></tr>`))}</div>`}
+function books(){return `<div class="card"><h2>Upload book list (CSV or Excel)</h2>
+ <p class="mu">Columns: Title, Category, Price, Quantity. Existing titles are updated; new ones are added.</p>
+ <input type="file" id="f" accept=".csv,.xlsx,.xls" onchange="upload(this)"><div class="msg">${esc(msg)}</div></div>
+ <div class="card"><h2>Add / edit a book</h2><div class="row">
+ <div><label>Title</label><input id="bt"></div><div><label>Category</label><input id="bc" list="cats"><datalist id="cats">${[...new Set(S.books.map(b=>b.category).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+ <div><label>Price</label><input id="bp" type="number" min="0"></div><div><label>Quantity</label><input id="bq" type="number" min="0"></div>
+ <button class="btn" onclick="addBook()">Save book</button></div></div>
+ <div class="card"><h2>Books (${S.books.length})</h2><input id="qb" placeholder="🔍 Search title or category" value="${esc(qb)}" oninput="qb=this.value;render();const e=document.getElementById('qb');e.focus();e.setSelectionRange(e.value.length,e.value.length)" style="margin-bottom:10px">${tbl(['Title','Category','Price','Stock','Sold','Available',''],S.books.filter(bf).map(b=>{const s=sold(b.id),a=b.qty-s;return `<tr><td>${esc(b.title)}</td><td>${esc(b.category)}</td><td>${b.price}</td><td>${b.qty}</td><td>${s}</td><td class="${a<=5?'low':''}">${a}</td><td style="white-space:nowrap"><button class="btn g" onclick="editBook('${b.id}')">Edit</button> <button class="btn g" onclick="delBook('${b.id}')">Delete</button></td></tr>`}))}</div>`}
+function sales(){const sel=(a,f)=>a.map(x=>`<option value="${x.id}" ${x.id===last.u?'selected':''}>${esc(f(x))}</option>`).join('');
+ return `<div class="card"><h2>Record a sale</h2><div class="row">
+ <div><label>Book</label><select id="sb">${sel(S.books,b=>`${b.title} (${b.qty-sold(b.id)} left)`)}</select></div>
+ <div><label>Quantity</label><input id="sq" type="number" min="1" value="1"></div>
+ <div><label>Sold by</label><select id="su">${sel(S.users,u=>`${u.name} (${u.type})`)}</select></div>
+ <div><label>Area</label><input id="sa" list="areas" value="${esc(last.a)}" placeholder="e.g. Banjara Hills"><datalist id="areas">${[...new Set(S.sales.map(s=>s.area).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join('')}</datalist></div>
+ <div><label>Date</label><input id="sd" type="date" value="${last.d||today()}"></div>
+ <button class="btn" onclick="addSale()">Add sale</button></div><div class="msg">${esc(msg)}</div></div>
+ <div class="card"><h2>Upload sales (CSV or Excel)</h2><p class="mu">Columns: Book (title), Quantity, Sold By (person/team name), Area, Date. Books must already exist in the list. Unknown sellers are registered automatically as Person. Rows exceeding available stock are skipped.</p><input type="file" accept=".csv,.xlsx,.xls" onchange="uploadSales(this)"><div class="msg">${esc(umsg)}</div></div>
+ <div class="card"><h2>Sales log</h2><input id="qs" placeholder="🔍 Search book, seller, area or date" value="${esc(qs)}" oninput="qs=this.value;render();const e=document.getElementById('qs');e.focus();e.setSelectionRange(e.value.length,e.value.length)" style="margin-bottom:10px">${tbl(['Date','Book','Qty','Sold by','Area',''],[...S.sales].sort((a,b)=>b.date.localeCompare(a.date)).filter(sf).map(s=>`<tr><td>${s.date}</td><td>${esc((bk(s.book)||{}).title)}</td><td>${s.qty}</td><td>${esc((S.users.find(u=>u.id===s.user)||{}).name)}</td><td>${esc(s.area)}</td><td><button class="btn g" onclick="delSale('${s.id}')">Delete</button></td></tr>`))}</div>`}
+function users(){return `<div class="card"><h2>Register person / team</h2><div class="row">
+ <div><label>Name</label><input id="un"></div><div><label>Type</label><select id="ut"><option>Person</option><option>Team</option></select></div>
+ <div><label>Phone / email</label><input id="uc"></div><div><label>Members (for teams)</label><input id="um"></div>
+ <button class="btn" onclick="addUser()">Register</button></div><div class="msg">${esc(msg)}</div></div>
+ <div class="card"><h2>Registered (${S.users.length})</h2>${tbl(['Name','Type','Contact','Members','Sold',''],S.users.map(u=>`<tr><td>${esc(u.name)}</td><td>${u.type}</td><td>${esc(u.contact)}</td><td>${esc(u.members)}</td><td>${S.sales.filter(s=>s.user===u.id).reduce((a,s)=>a+s.qty,0)}</td><td><button class="btn g" onclick="delUser('${u.id}')">Delete</button></td></tr>`))}</div>`}
+const v=id=>document.getElementById(id).value.trim();
+function addBook(){const t=v('bt');if(!t){msg='Title is required.';return render()}upsert({title:t,category:v('bc'),price:+v('bp')||0,qty:+v('bq')||0});msg='Saved “'+t+'” ✓';save();render()}
+function upsert(r){const b=S.books.find(x=>x.title.toLowerCase()===r.title.toLowerCase());if(b)Object.assign(b,r);else S.books.push({id:uid(),...r})}
+const bf=b=>(b.title+' '+b.category).toLowerCase().includes(qb.toLowerCase());
+const sf=s=>(((bk(s.book)||{}).title||'')+' '+((S.users.find(u=>u.id===s.user)||{}).name||'')+' '+s.area+' '+s.date).toLowerCase().includes(qs.toLowerCase());
+function editBook(id){const b=bk(id);['bt','bc','bp','bq'].forEach((k,i)=>document.getElementById(k).value=[b.title,b.category,b.price,b.qty][i]);const t=document.getElementById('bt');t.scrollIntoView({behavior:'smooth',block:'center'});t.focus()}
+function delBook(id){if(confirm('Delete this book and its sales?')){S.books=S.books.filter(b=>b.id!==id);S.sales=S.sales.filter(s=>s.book!==id);save();render()}}
+function addSale(){const q=+v('sq'),b=bk(v('sb')),u=v('su');
+ if(!b||!u){msg='Add a book and register a seller first.';return render()}
+ if(q<1){msg='Enter a valid quantity.';return render()}
+ if(q>b.qty-sold(b.id)){msg='Not enough stock available.';return render()}
+ last={u,a:v('sa'),d:v('sd')};S.sales.push({id:uid(),book:b.id,qty:q,user:u,area:v('sa'),date:v('sd')||today()});msg='Sale recorded ✓ (seller, area and date are kept for your next entry)';save();render()}
+function delSale(id){S.sales=S.sales.filter(s=>s.id!==id);save();render()}
+function addUser(){const n=v('un');if(!n){msg='Name is required.';return render()}S.users.push({id:uid(),name:n,type:v('ut'),contact:v('uc'),members:v('um')});msg='Registered.';save();render()}
+function delUser(id){if(confirm('Delete this registration?')){S.users=S.users.filter(u=>u.id!==id);S.sales=S.sales.filter(s=>s.user!==id);save();render()}}
+function upload(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();
+ rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});let n=0;
+ rows.forEach(r=>{const o={};Object.keys(r).forEach(k=>o[k.toLowerCase().trim()]=r[k]);const t=String(o.title||o.name||o['book name']||'').trim();if(!t)return;
+ upsert({title:t,category:String(o.category||''),price:+o.price||0,qty:+(o.quantity??o.qty??o.stock)||0});n++});
+ msg=`Imported ${n} of ${rows.length} rows.`;save()}catch(err){msg='Could not read that file.'}render()};
+ rd.readAsArrayBuffer(f)}
+function toIso(d){if(d instanceof Date&&!isNaN(d)){const x=new Date(d.getTime()+12*36e5);return x.toISOString().slice(0,10)}const s=String(d||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const p=new Date(s);return isNaN(p)?today():new Date(p.getTime()+12*36e5).toISOString().slice(0,10)}
+function uploadSales(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();
+ rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});let ok=0,bad=[];
+ rows.forEach((r,i)=>{const o={};Object.keys(r).forEach(k=>o[k.toLowerCase().trim()]=r[k]);
+ const t=String(o.book||o.title||o['book name']||'').trim().toLowerCase(),q=+(o.quantity??o.qty??o.sold)||0,n=String(o['sold by']||o.seller||o.team||o.person||o.name||'').trim();
+ const b=S.books.find(x=>x.title.toLowerCase()===t);
+ if(!b||q<1||!n){bad.push(i+2);return}
+ if(q>b.qty-sold(b.id)){bad.push(i+2);return}
+ let u=S.users.find(x=>x.name.toLowerCase()===n.toLowerCase());if(!u){u={id:uid(),name:n,type:'Person',contact:'',members:''};S.users.push(u)}
+ S.sales.push({id:uid(),book:b.id,qty:q,user:u.id,area:String(o.area||o.location||'').trim(),date:toIso(o.date)});ok++});
+ umsg=`Imported ${ok} of ${rows.length} rows.`+(bad.length?` Skipped rows (unknown book, bad quantity, missing seller or not enough stock): ${bad.join(', ')}.`:'');save()}catch(err){umsg='Could not read that file.'}render()};
+ rd.readAsArrayBuffer(f)}
+let lbm='books',lbt='all';
+function lb(){
+ const m={};S.users.filter(u=>lbt==='all'||u.type===lbt).forEach(u=>m[u.id]={n:u.name,t:u.type,b:0,r:0});
+ S.sales.forEach(s=>{const x=m[s.user];if(x){x.b+=s.qty;x.r+=s.qty*((bk(s.book)||{}).price||0)}});
+ const k=lbm==='books'?'b':'r',o=lbm==='books'?'r':'b';
+ const rows=Object.values(m).filter(x=>x.b>0).sort((a,b)=>b[k]-a[k]||b[o]-a[o]);
+ const max=rows.length?rows[0][k]:1,md=['🥇','🥈','🥉'],rp=n=>'₹'+n.toLocaleString('en-IN');
+ return `<div class="card"><h2>🏆 Leaderboard</h2><div class="row"><div><label>Rank by</label><select onchange="lbm=this.value;render()"><option value="books" ${lbm==='books'?'selected':''}>Number of books</option><option value="rupees" ${lbm==='rupees'?'selected':''}>Rupees (sales amount)</option></select></div><div><label>Show</label><select onchange="lbt=this.value;render()"><option value="all" ${lbt==='all'?'selected':''}>Everyone</option><option value="Person" ${lbt==='Person'?'selected':''}>Persons only</option><option value="Team" ${lbt==='Team'?'selected':''}>Teams only</option></select></div></div></div>
+ <div class="card">${rows.length?rows.map((x,i)=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>${md[i]||'<b>'+(i+1)+'.</b>'} <b>${esc(x.n)}</b> <span class="mu">${x.t}</span></span><span><b>${lbm==='books'?x.b+' books':rp(x.r)}</b> <span class="mu">${lbm==='books'?rp(x.r):x.b+' books'}</span></span></div><div style="height:8px;background:var(--bd);border-radius:4px;margin-top:4px"><div style="height:8px;width:${Math.round(x[k]/max*100)}%;background:var(--ac);border-radius:4px"></div></div></div>`).join(''):'<p class="mu">No sales yet. Record sales to see the ranking.</p>'}</div>`}
+function render(){nav();document.getElementById('app').innerHTML={dash,books,sales,lb,users}[tab]()}
+render();
+</script></body></html>

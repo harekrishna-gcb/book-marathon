@@ -1,0 +1,5 @@
+node_modules/
+frontend/dist/
+apps-scripts/
+.env
+.env.local
