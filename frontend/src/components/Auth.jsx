@@ -38,14 +38,14 @@ export function Login({ msg: initialMsg, onLoggedIn, onRegister }) {
 
   return (
     <form className="card stack" onSubmit={submit}>
-      <h2>🙏 Hare Krishna! Please log in</h2>
+      <h2>🙏 Hare Krishna!</h2>
       <div><label htmlFor="lid">Phone number or name</label>
         <input id="lid" autoComplete="username" value={id} onChange={(e) => setId(e.target.value)} autoFocus /></div>
       <div><label htmlFor="lpin">PIN</label>
         <input id="lpin" type="password" inputMode="numeric" maxLength={6} autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} /></div>
       <button className="btn block" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       <Msg msg={msg} />
-      <p className="mu">New volunteer or team? <button type="button" className="link" onClick={onRegister}>Register here</button>. An admin approves new registrations.</p>
+      <p className="mu">New volunteer or team? <button type="button" className="link" onClick={onRegister}>Register</button></p>
     </form>
   );
 }

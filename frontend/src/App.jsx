@@ -193,7 +193,6 @@ export default function App() {
             <div className="auth-brand">
               <div className="brand-logo" aria-hidden="true">📚</div>
               <h1>{name}</h1>
-              <p>Srila Prabhupada’s books · stock, sales and team tracker</p>
             </div>
             {!configured ? <NotConfigured />
               : authView === 'register'
@@ -233,7 +232,6 @@ export default function App() {
               <Icon name={t.icon} />{t.label}{t.key === 'users' && showBadge && <span className="badge">{pending}</span>}
             </button>
           ))}
-          <div className="side-foot mu">Logged in as <b>{me.name}</b> ({me.role})</div>
         </aside>
       )}
       <div>

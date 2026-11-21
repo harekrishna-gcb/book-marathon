@@ -21,12 +21,15 @@ function sellerChoices(me, users) {
 export default function Sales({ ctx }) {
   const { me } = ctx;
   const [editing, setEditing] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const scope = me.role === 'admin' ? 'All sales' : me.role === 'lead' ? 'Your team’s sales' : 'Your sales';
   return (
     <>
-      <PageHead title="Sales" sub={`${scope} · ${num(ctx.sales.length)} entr${ctx.sales.length === 1 ? 'y' : 'ies'}`} />
+      <PageHead title="Sales" sub={me.role === 'admin' ? undefined : scope}>
+        {me.role === 'admin' && !uploading && <button className="btn s" onClick={() => setUploading(true)}><Icon name="upload" />Upload sales</button>}
+      </PageHead>
       <SaleForm key={editing ? editing.id : 'new'} ctx={ctx} sale={editing} onDone={() => setEditing(null)} />
-      {me.role === 'admin' && <SalesUpload ctx={ctx} />}
+      {me.role === 'admin' && uploading && <SalesUpload ctx={ctx} onClose={() => setUploading(false)} />}
       <SalesLog ctx={ctx} onEdit={(s) => { setEditing(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }} editingId={editing && editing.id} onDeleted={(id) => editing && editing.id === id && setEditing(null)} />
     </>
   );
@@ -77,7 +80,7 @@ function SaleForm({ ctx, sale, onDone }) {
       store.set('bm.lastBook.' + me.id, bookId);
       session.set('bm.lastDate', f.sale_date);
       setF({ ...f, quantity: '1' });
-      setMsg({ text: 'Sale recorded ✓ (seller, area and date are kept for your next entry)', kind: 'ok' });
+      setMsg({ text: 'Sale recorded ✓', kind: 'ok' });
       qtyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) { err(e.message); }
   };
@@ -144,7 +147,7 @@ function SalesLog({ ctx, onEdit, onDeleted }) {
   );
 }
 
-function SalesUpload({ ctx }) {
+function SalesUpload({ ctx, onClose }) {
   const { books, users, apply } = ctx;
   const [msg, setMsg] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -193,8 +196,8 @@ function SalesUpload({ ctx }) {
 
   return (
     <div className="card">
-      <CardHead icon="upload" title="Upload sales (CSV or Excel)" />
-      <p className="mu">Columns: <b>Book</b> (title), <b>Quantity</b>, <b>Sold By</b> (person/team name), <b>Area</b>, <b>Date</b>. Books must already be in the list. Unknown sellers are added as pending persons. Rows with an unknown book, a bad quantity or date, a missing seller, or not enough stock are skipped and listed. Text dates are read day-first (05/11/2026 = 5 Nov); a blank date means today.</p>
+      <CardHead icon="upload" title="Upload sales"><button className="btn g" onClick={onClose} disabled={saving}>Close</button></CardHead>
+      <p className="mu">CSV or Excel with columns: <b>Book, Quantity, Sold By, Area, Date</b></p>
       <input type="file" ref={fileRef} accept=".csv,.xlsx,.xls" onChange={pick} disabled={saving} />
       <Msg msg={msg} />
       {preview && (
@@ -208,7 +211,6 @@ function SalesUpload({ ctx }) {
                 <td>{i.ok ? <><Tag kind="good">Import</Tag> <span className="mu">{i.note}</span></> : <><Tag kind="warn">Skip</Tag> <span className="mu">{i.reason}</span></>}</td></tr>
             ))} />
           {preview.items.length > shown.length && <p className="mu">…and {preview.items.length - shown.length} more rows.</p>}
-          <p className="mu">Stock is checked again when saving, in case someone else records a sale meanwhile.</p>
           <div className="btns">
             <button className="btn" onClick={confirm} disabled={saving || !good}>{saving ? 'Saving…' : `Confirm upload (${good} sales)`}</button>
             <button className="btn s" onClick={() => setPreview(null)} disabled={saving}>Cancel</button>

@@ -37,7 +37,7 @@ export default function Leaderboard({ ctx }) {
 
   return (
     <>
-      <PageHead title="Leaderboard" sub="Who has distributed the most books" />
+      <PageHead title="Leaderboard" />
       <div className="btns" style={{ marginBottom: 16 }}>
         <Seg label="Rank by" value={by} onChange={setBy} options={[['books', 'Books'], ['rupees', 'Rupees']]} />
         <Seg label="Show" value={type} onChange={setType} options={[['all', 'Everyone'], ['Person', 'Persons'], ['Team', 'Teams']]} />

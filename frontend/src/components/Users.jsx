@@ -64,7 +64,6 @@ export default function Users({ ctx }) {
                 <td><BusyButton className="btn g" busyText="…" onClick={() => unlock(u)}>Unlock</BusyButton></td>
               </tr>
             ))} />
-          <p className="mu">These accounts had 10 wrong PINs within 24 hours. If the person forgot their PIN, use Edit to set a new one, then Unlock. If it wasn’t them, someone may be guessing: consider giving them a new PIN anyway.</p>
         </div>
       )}
       {pending.length > 0 && (isAdmin || isLead) && (
@@ -73,14 +72,13 @@ export default function Users({ ctx }) {
           <Table head={['Name', 'Type', 'Phone', 'Registered', '']}
             rows={pending.map((u) => (
               <tr key={u.id}>
-                <td>{u.name}{!u.has_pin && <> <Tag>added by sales upload</Tag></>}</td><td>{u.type}</td><td>{u.phone || '—'}</td><td>{String(u.created_at || '').slice(0, 10)}</td>
+                <td>{u.name}{!u.has_pin && <> <Tag>from upload</Tag></>}</td><td>{u.type}</td><td>{u.phone || '—'}</td><td>{String(u.created_at || '').slice(0, 10)}</td>
                 <td>
                   <BusyButton className="btn g" busyText="…" onClick={() => approve(u)}>Approve</BusyButton>
                   {isAdmin && <BusyButton className="btn g danger" busyText="…" onClick={() => del(u)}>Delete</BusyButton>}
                 </td>
               </tr>
             ))} />
-          <p className="mu">Approved users can log in with their phone/name and PIN. Users without a PIN need one set (Edit → PIN) before they can log in; they can still be credited with sales.</p>
         </div>
       )}
       {(isAdmin || isLead) && (editing || adding) && <UserForm key={editing ? editing.id : 'new'} ctx={ctx} user={editing} formRef={formRef} onDone={() => { setEditing(null); setAdding(false); }} />}
@@ -125,7 +123,6 @@ function UserList({ ctx, onEdit, onRemove, onDelete }) {
             </td>
           </tr>
         ))} />
-      {!isAdmin && <p className="mu">Phone numbers are visible only to admins{isLead ? ' and to you for your own team' : ''}.</p>}
     </div>
   );
 }
@@ -144,7 +141,7 @@ function UserForm({ ctx, user, formRef, onDone }) {
   const teams = users.filter((u) => u.type === 'Team' && (!user || u.id !== user.id));
 
   if (me.role === 'lead' && !teamOf(me)) {
-    return <div className="card"><CardHead icon="users" title="My team" /><p className="mu">You are not part of a team yet. Ask an admin to set your team.</p></div>;
+    return <div className="card"><CardHead icon="users" title="My team" /><p className="mu">Ask an admin to add you to a team.</p></div>;
   }
 
   const save = async () => {
@@ -194,8 +191,6 @@ function UserForm({ ctx, user, formRef, onDone }) {
           <button className="btn s" onClick={onDone}>{user ? 'Cancel' : 'Close'}</button>
         </div>
       </div>
-      {me.role === 'lead' && !user && <p className="mu">New members are added as approved sellers in your team. Give them a PIN so they can log in, or leave it blank and record sales for them yourself.</p>}
-      {self && <p className="mu">Use “Change PIN” at the top to change your own PIN.</p>}
       <Msg msg={msg} />
     </div>
   );

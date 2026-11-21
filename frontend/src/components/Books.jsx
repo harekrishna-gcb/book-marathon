@@ -32,16 +32,18 @@ export default function Books({ ctx }) {
 
   const [editing, setEditing] = useState(null);
   const [adding, setAdding] = useState(() => !books.length); // form starts open only when there are no books yet
+  const [uploading, setUploading] = useState(false);
   const formRef = useRef();
 
   const available = books.reduce((a, b) => a + b.available, 0);
   return (
     <>
       <PageHead title="Books" sub={`${books.length} title${books.length === 1 ? '' : 's'} · ${num(available)} copies available`}>
+        {isAdmin && !uploading && <button className="btn s" onClick={() => setUploading(true)}><Icon name="upload" />Upload list</button>}
         {isAdmin && !editing && !adding && <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />Add book</button>}
       </PageHead>
       {isAdmin && (editing || adding) && <BookForm key={editing ? editing.id : 'new'} ctx={ctx} book={editing} formRef={formRef} onDone={() => { setEditing(null); setAdding(false); }} />}
-      {isAdmin && <BookUpload ctx={ctx} />}
+      {isAdmin && uploading && <BookUpload ctx={ctx} onClose={() => setUploading(false)} />}
       <div className="card">
         <CardHead icon="list" title={`All books (${books.length})`} />
         <Search placeholder="Search title or category" value={q} onChange={setQ} />
@@ -102,13 +104,12 @@ function BookForm({ ctx, book, formRef, onDone }) {
           <button className="btn s" onClick={onDone}>{book ? 'Cancel' : 'Close'}</button>
         </div>
       </div>
-      {book && <p className="mu">{num(book.sold)} copies already sold.</p>}
       <Msg msg={msg} />
     </div>
   );
 }
 
-function BookUpload({ ctx }) {
+function BookUpload({ ctx, onClose }) {
   const { books, apply } = ctx;
   const [msg, setMsg] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -154,8 +155,8 @@ function BookUpload({ ctx }) {
 
   return (
     <div className="card">
-      <CardHead icon="upload" title="Upload book list (CSV or Excel)" />
-      <p className="mu">Columns: <b>Title, Category, Price, Quantity</b>. Titles are matched ignoring capital letters: existing titles are updated, new ones are added. You will see a preview before anything is saved.</p>
+      <CardHead icon="upload" title="Upload book list"><button className="btn g" onClick={onClose} disabled={saving}>Close</button></CardHead>
+      <p className="mu">CSV or Excel with columns: <b>Title, Category, Price, Quantity</b></p>
       <input type="file" ref={fileRef} accept=".csv,.xlsx,.xls" onChange={pick} disabled={saving} />
       <Msg msg={msg} />
       {preview && (
