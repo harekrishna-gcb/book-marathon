@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import * as api from '../lib/api.js';
-import { Msg } from './ui.jsx';
+import { CardHead, Msg } from './ui.jsx';
 
 export function NotConfigured() {
   return (
-    <div className="card narrow">
+    <div className="card">
       <h2>⚙️ Almost there</h2>
       <p>This website is not connected to its Google Sheet yet.</p>
       <ol>
@@ -37,13 +37,13 @@ export function Login({ msg: initialMsg, onLoggedIn, onRegister }) {
   };
 
   return (
-    <form className="card narrow stack" onSubmit={submit}>
+    <form className="card stack" onSubmit={submit}>
       <h2>🙏 Hare Krishna! Please log in</h2>
       <div><label htmlFor="lid">Phone number or name</label>
         <input id="lid" autoComplete="username" value={id} onChange={(e) => setId(e.target.value)} autoFocus /></div>
       <div><label htmlFor="lpin">PIN</label>
         <input id="lpin" type="password" inputMode="numeric" maxLength={6} autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} /></div>
-      <button className="btn" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+      <button className="btn block" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       <Msg msg={msg} />
       <p className="mu">New volunteer or team? <button type="button" className="link" onClick={onRegister}>Register here</button>. An admin approves new registrations.</p>
     </form>
@@ -74,7 +74,7 @@ export function Register({ onDone, onBack }) {
   };
 
   return (
-    <form className="card narrow stack" onSubmit={submit}>
+    <form className="card stack" onSubmit={submit}>
       <h2>Register as a volunteer</h2>
       <div><label htmlFor="rn">Your name (or team name)</label><input id="rn" maxLength={100} value={f.name} onChange={set('name')} autoFocus /></div>
       <div><label htmlFor="rt">Registering as</label>
@@ -85,7 +85,7 @@ export function Register({ onDone, onBack }) {
         <div><label htmlFor="rpin">Choose a 4–6 digit PIN</label><input id="rpin" type="password" inputMode="numeric" maxLength={6} value={f.pin} onChange={set('pin')} /></div>
         <div><label htmlFor="rpin2">Repeat PIN</label><input id="rpin2" type="password" inputMode="numeric" maxLength={6} value={f.pin2} onChange={set('pin2')} /></div>
       </div>
-      <button className="btn" type="submit" disabled={busy}>{busy ? 'Registering…' : 'Register'}</button>
+      <button className="btn block" type="submit" disabled={busy}>{busy ? 'Registering…' : 'Register'}</button>
       <Msg msg={msg} />
       <p className="mu"><button type="button" className="link" onClick={onBack}>← Back to log in</button></p>
     </form>
@@ -114,7 +114,7 @@ export function ChangePin({ onClose, toast }) {
 
   return (
     <div className="card">
-      <h2>Change my PIN</h2>
+      <CardHead icon="key" title="Change my PIN" />
       <div className="row">
         <div><label htmlFor="op">Current PIN</label><input id="op" type="password" inputMode="numeric" maxLength={6} value={f.old} onChange={set('old')} autoFocus /></div>
         <div><label htmlFor="np">New PIN (4–6 digits)</label><input id="np" type="password" inputMode="numeric" maxLength={6} value={f.pin} onChange={set('pin')} /></div>

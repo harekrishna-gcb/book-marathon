@@ -6,7 +6,7 @@ import { planBooks, ranges, norm } from '../lib/plan.js';
 import { runChunks, stopMessage } from '../lib/upload.js';
 import { downloadRows, bookRows } from '../lib/exportData.js';
 import { num, rupees } from '../lib/format.js';
-import { BusyButton, ExportButtons, Msg, Table, Tag, UploadResult } from './ui.jsx';
+import { BusyButton, CardHead, ExportButtons, Icon, Msg, PageHead, Search, Table, Tag, UploadResult } from './ui.jsx';
 
 const blankForm = { title: '', category: '', price: '', quantity: '' };
 
@@ -17,8 +17,12 @@ export default function Books({ ctx }) {
   const list = useMemo(() => books.filter((b) => `${b.title} ${b.category}`.toLowerCase().includes(q.toLowerCase())), [books, q]);
 
   const del = async (b) => {
-    const warn = b.sold ? `\n\nIts ${b.sold} sold copies (sales entries) will also be deleted.` : '';
-    if (!window.confirm(`Delete “${b.title}”?${warn}`)) return;
+    const ok = await ctx.confirm({
+      title: `Delete “${b.title}”?`,
+      message: b.sold ? `Its ${b.sold} sold copies (sales entries) will also be deleted. This cannot be undone.` : 'This cannot be undone.',
+      confirmText: 'Delete book', danger: true,
+    });
+    if (!ok) return;
     try {
       const d = await api.call('deleteBook', { id: b.id });
       apply({ books: d.books, sales: ctx.sales.filter((s) => s.book_id !== b.id) });
@@ -27,15 +31,20 @@ export default function Books({ ctx }) {
   };
 
   const [editing, setEditing] = useState(null);
+  const [adding, setAdding] = useState(() => !books.length); // form starts open only when there are no books yet
   const formRef = useRef();
 
+  const available = books.reduce((a, b) => a + b.available, 0);
   return (
     <>
+      <PageHead title="Books" sub={`${books.length} title${books.length === 1 ? '' : 's'} · ${num(available)} copies available`}>
+        {isAdmin && !editing && !adding && <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />Add book</button>}
+      </PageHead>
+      {isAdmin && (editing || adding) && <BookForm key={editing ? editing.id : 'new'} ctx={ctx} book={editing} formRef={formRef} onDone={() => { setEditing(null); setAdding(false); }} />}
       {isAdmin && <BookUpload ctx={ctx} />}
-      {isAdmin && <BookForm key={editing ? editing.id : 'new'} ctx={ctx} book={editing} formRef={formRef} onDone={() => setEditing(null)} />}
       <div className="card">
-        <h2>Books ({books.length})</h2>
-        <input placeholder="🔍 Search title or category" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 10 }} />
+        <CardHead icon="list" title={`All books (${books.length})`} />
+        <Search placeholder="Search title or category" value={q} onChange={setQ} />
         <Table head={['Title', 'Category', '#Price', '#Stock', '#Sold', '#Available', ...(isAdmin ? [''] : [])]}
           empty={books.length ? `No book matches “${q}”.` : isAdmin ? 'No books yet. Upload a list or add one above.' : 'No books yet. An admin will add them.'}
           rows={list.map((b) => (
@@ -43,8 +52,8 @@ export default function Books({ ctx }) {
               <td>{b.title}</td><td>{b.category}</td><td className="n">{rupees(b.price)}</td><td className="n">{num(b.quantity_received)}</td><td className="n">{num(b.sold)}</td>
               <td className={'n' + (b.low ? ' low' : '')}>{num(b.available)}</td>
               {isAdmin && (
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn g" onClick={() => { setEditing(b); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }}>Edit</button>{' '}
+                <td>
+                  <button className="btn g" onClick={() => { setEditing(b); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }}>Edit</button>
                   <BusyButton className="btn g danger" busyText="…" onClick={() => del(b)}>Delete</BusyButton>
                 </td>
               )}
@@ -81,16 +90,16 @@ function BookForm({ ctx, book, formRef, onDone }) {
 
   return (
     <div className="card" ref={formRef}>
-      <h2>{book ? `Edit “${book.title}”` : 'Add a book'}</h2>
+      <CardHead icon={book ? 'book' : 'plus'} title={book ? `Edit “${book.title}”` : 'Add a book'} />
       <div className="row">
-        <div><label htmlFor="bt">Title</label><input id="bt" maxLength={200} value={f.title} onChange={set('title')} autoFocus={!!book} /></div>
-        <div><label htmlFor="bc">Category</label><input id="bc" list="cats" value={f.category} onChange={set('category')} />
+        <div className="field"><label htmlFor="bt">Title</label><input id="bt" maxLength={200} value={f.title} onChange={set('title')} autoFocus={!!book} /></div>
+        <div className="field"><label htmlFor="bc">Category</label><input id="bc" list="cats" value={f.category} onChange={set('category')} />
           <datalist id="cats">{categories.map((c) => <option key={c} value={c} />)}</datalist></div>
-        <div><label htmlFor="bp">Price (₹)</label><input id="bp" type="number" min="0" step="any" inputMode="decimal" value={f.price} onChange={set('price')} /></div>
-        <div><label htmlFor="bq">Quantity received</label><input id="bq" type="number" min="0" step="1" inputMode="numeric" value={f.quantity} onChange={set('quantity')} /></div>
+        <div className="field"><label htmlFor="bp">Price (₹)</label><input id="bp" type="number" min="0" step="any" inputMode="decimal" value={f.price} onChange={set('price')} /></div>
+        <div className="field"><label htmlFor="bq">Quantity received</label><input id="bq" type="number" min="0" step="1" inputMode="numeric" value={f.quantity} onChange={set('quantity')} /></div>
         <div className="btns">
           <BusyButton onClick={save}>{book ? 'Update book' : 'Save book'}</BusyButton>
-          {book && <button className="btn s" onClick={onDone}>Cancel</button>}
+          <button className="btn s" onClick={onDone}>{book ? 'Cancel' : 'Close'}</button>
         </div>
       </div>
       {book && <p className="mu">{num(book.sold)} copies already sold.</p>}
@@ -145,7 +154,7 @@ function BookUpload({ ctx }) {
 
   return (
     <div className="card">
-      <h2>Upload book list (CSV or Excel)</h2>
+      <CardHead icon="upload" title="Upload book list (CSV or Excel)" />
       <p className="mu">Columns: <b>Title, Category, Price, Quantity</b>. Titles are matched ignoring capital letters: existing titles are updated, new ones are added. You will see a preview before anything is saved.</p>
       <input type="file" ref={fileRef} accept=".csv,.xlsx,.xls" onChange={pick} disabled={saving} />
       <Msg msg={msg} />

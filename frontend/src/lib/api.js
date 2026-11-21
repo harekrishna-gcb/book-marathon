@@ -17,6 +17,7 @@ export function apiUrl() {
 }
 
 export function isConfigured() {
+  if (window.BM_LOCAL_BACKEND) return true;
   return /^https:\/\/script\.google(usercontent)?\.com\//.test(apiUrl());
 }
 
@@ -40,6 +41,7 @@ export const hasSession = () => !!session;
 export const setOnAuthLost = (fn) => { onAuthLost = fn; };
 
 async function send(body) {
+  if (window.BM_LOCAL_BACKEND) return window.BM_LOCAL_BACKEND(body); // offline demo / screenshots only
   let res;
   try {
     res = await fetch(apiUrl(), {

@@ -6,7 +6,7 @@ import { planSales, ranges } from '../lib/plan.js';
 import { runChunks, stopMessage } from '../lib/upload.js';
 import { downloadRows, saleRows } from '../lib/exportData.js';
 import { num, rupees, today, teamOf, store, session } from '../lib/format.js';
-import { BusyButton, ExportButtons, Msg, Table, Tag, UploadResult } from './ui.jsx';
+import { BusyButton, CardHead, EmptyState, ExportButtons, Icon, Msg, PageHead, Search, Stepper, Table, Tag, UploadResult } from './ui.jsx';
 
 /** Who the current user may record sales for (the server enforces the same rule). */
 function sellerChoices(me, users) {
@@ -21,8 +21,10 @@ function sellerChoices(me, users) {
 export default function Sales({ ctx }) {
   const { me } = ctx;
   const [editing, setEditing] = useState(null);
+  const scope = me.role === 'admin' ? 'All sales' : me.role === 'lead' ? 'Your team’s sales' : 'Your sales';
   return (
     <>
+      <PageHead title="Sales" sub={`${scope} · ${num(ctx.sales.length)} entr${ctx.sales.length === 1 ? 'y' : 'ies'}`} />
       <SaleForm key={editing ? editing.id : 'new'} ctx={ctx} sale={editing} onDone={() => setEditing(null)} />
       {me.role === 'admin' && <SalesUpload ctx={ctx} />}
       <SalesLog ctx={ctx} onEdit={(s) => { setEditing(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }} editingId={editing && editing.id} onDeleted={(id) => editing && editing.id === id && setEditing(null)} />
@@ -47,8 +49,10 @@ function SaleForm({ ctx, sale, onDone }) {
 
   if (!books.length) {
     return (
-      <div className="card"><h2>Record a sale</h2>
-        <p className="mu">No books yet. {me.role === 'admin' ? <>Add books on the <button className="link" onClick={() => go('books')}>Books</button> tab first.</> : 'An admin needs to add the book list first.'}</p>
+      <div className="card"><CardHead icon="plus" title="Record a sale" />
+        <EmptyState emoji="📚" title="No books yet">
+          {me.role === 'admin' ? <>Add books on the <button className="link" onClick={() => go('books')}>Books</button> tab first.</> : 'An admin needs to add the book list first.'}
+        </EmptyState>
       </div>
     );
   }
@@ -74,29 +78,29 @@ function SaleForm({ ctx, sale, onDone }) {
       session.set('bm.lastDate', f.sale_date);
       setF({ ...f, quantity: '1' });
       setMsg({ text: 'Sale recorded ✓ (seller, area and date are kept for your next entry)', kind: 'ok' });
-      qtyRef.current?.focus();
+      qtyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) { err(e.message); }
   };
 
   return (
-    <div className="card">
-      <h2>{sale ? '✏️ Edit sale' : 'Record a sale'}</h2>
+    <div className="card" ref={qtyRef}>
+      <CardHead icon={sale ? 'bag' : 'plus'} title={sale ? 'Edit sale' : 'Record a sale'} />
       <div className="row">
-        <div><label htmlFor="sb">Book</label>
+        <div className="field"><label htmlFor="sb">Book</label>
           <select id="sb" value={f.book_id || books[0].id} onChange={set('book_id')}>
             {books.map((b) => { const left = leftFor(b); return <option key={b.id} value={b.id}>{b.title} ({left > 0 ? `${left} left` : 'out of stock'})</option>; })}
           </select></div>
-        <div><label htmlFor="sq">Quantity</label><input id="sq" ref={qtyRef} type="number" min="1" step="1" inputMode="numeric" value={f.quantity} onChange={set('quantity')} /></div>
-        <div><label htmlFor="su">Sold by</label>
+        <div className="field"><label htmlFor="sq">Quantity</label><Stepper id="sq" value={f.quantity} onChange={(v) => setF({ ...f, quantity: v })} /></div>
+        <div className="field"><label htmlFor="su">Sold by</label>
           {choices.length > 1
             ? <select id="su" value={f.user_id} onChange={set('user_id')}>{choices.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.type}{u.approved ? '' : ', pending'})</option>)}</select>
             : <input id="su" value={me.name} disabled />}
         </div>
-        <div><label htmlFor="sa">Area</label><input id="sa" list="areas" maxLength={100} placeholder="e.g. Banjara Hills" value={f.area} onChange={set('area')} />
+        <div className="field"><label htmlFor="sa">Area</label><input id="sa" list="areas" maxLength={100} placeholder="e.g. Banjara Hills" value={f.area} onChange={set('area')} />
           <datalist id="areas">{areas.map((a) => <option key={a} value={a} />)}</datalist></div>
-        <div><label htmlFor="sd">Date</label><input id="sd" type="date" max={today()} value={f.sale_date} onChange={set('sale_date')} /></div>
+        <div className="field"><label htmlFor="sd">Date</label><input id="sd" type="date" max={today()} value={f.sale_date} onChange={set('sale_date')} /></div>
         <div className="btns">
-          <BusyButton onClick={save}>{sale ? 'Update sale' : 'Add sale'}</BusyButton>
+          <BusyButton onClick={save}><Icon name={sale ? 'check' : 'plus'} />{sale ? 'Update sale' : 'Add sale'}</BusyButton>
           {sale && <button className="btn s" onClick={onDone}>Cancel</button>}
         </div>
       </div>
@@ -113,23 +117,23 @@ function SalesLog({ ctx, onEdit, onDeleted }) {
   const copies = list.reduce((a, s) => a + s.quantity, 0), amount = list.reduce((a, s) => a + s.amount, 0);
 
   const del = async (s) => {
-    if (!window.confirm(`Delete this sale?\n\n${s.sale_date} · ${s.quantity} × ${s.book_title} · ${s.user_name}`)) return;
+    const ok = await ctx.confirm({ title: 'Delete this sale?', message: `${s.sale_date} · ${s.quantity} × ${s.book_title} · ${s.user_name}`, confirmText: 'Delete sale', danger: true });
+    if (!ok) return;
     try { apply(await api.call('deleteSale', { id: s.id })); onDeleted(s.id); toast('Sale deleted'); } catch (e) { toast(e.message, true); }
   };
 
-  const scope = me.role === 'admin' ? '' : me.role === 'lead' ? ' — your team' : ' — your sales';
   return (
     <div className="card">
-      <h2>Sales log{scope}</h2>
-      <input placeholder="🔍 Search book, seller, area or date" value={q} onChange={(e) => { setQ(e.target.value); setShow(200); }} style={{ marginBottom: 6 }} />
+      <CardHead icon="list" title="Sales log" />
+      <Search placeholder="Search book, seller, area or date" value={q} onChange={(v) => { setQ(v); setShow(200); }} />
       <p className="mu">{num(list.length)} entr{list.length === 1 ? 'y' : 'ies'} · {num(copies)} copies · {rupees(amount)}</p>
-      <Table head={['Date', 'Book', '#Qty', '#Amount', 'Sold by', 'Area', '']}
+      <Table head={['Book', 'Date', '#Qty', '#Amount', 'Sold by', 'Area', '']}
         empty={sales.length ? `No sale matches “${q}”.` : 'No sales recorded yet. Add your first sale above.'}
         rows={list.slice(0, show).map((s) => (
           <tr key={s.id}>
-            <td style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td><td>{s.book_title}</td><td className="n">{s.quantity}</td><td className="n">{rupees(s.amount)}</td><td>{s.user_name}</td><td>{s.area}</td>
-            <td style={{ whiteSpace: 'nowrap' }}>
-              <button className="btn g" onClick={() => onEdit(s)}>Edit</button>{' '}
+            <td>{s.book_title}</td><td style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td><td className="n">{s.quantity}</td><td className="n">{rupees(s.amount)}</td><td>{s.user_name}</td><td>{s.area}</td>
+            <td>
+              <button className="btn g" onClick={() => onEdit(s)}>Edit</button>
               <BusyButton className="btn g danger" busyText="…" onClick={() => del(s)}>Delete</BusyButton>
             </td>
           </tr>
@@ -189,7 +193,7 @@ function SalesUpload({ ctx }) {
 
   return (
     <div className="card">
-      <h2>Upload sales (CSV or Excel)</h2>
+      <CardHead icon="upload" title="Upload sales (CSV or Excel)" />
       <p className="mu">Columns: <b>Book</b> (title), <b>Quantity</b>, <b>Sold By</b> (person/team name), <b>Area</b>, <b>Date</b>. Books must already be in the list. Unknown sellers are added as pending persons. Rows with an unknown book, a bad quantity or date, a missing seller, or not enough stock are skipped and listed. Text dates are read day-first (05/11/2026 = 5 Nov); a blank date means today.</p>
       <input type="file" ref={fileRef} accept=".csv,.xlsx,.xls" onChange={pick} disabled={saving} />
       <Msg msg={msg} />

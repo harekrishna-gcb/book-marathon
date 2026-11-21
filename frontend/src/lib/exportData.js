@@ -1,8 +1,8 @@
-import * as XLSX from 'xlsx';
 import { today } from './format.js';
 
 /** Downloads rows (array of plain objects) as .xlsx or .csv. */
-export function downloadRows(rows, sheetName, campaign, type) {
+export async function downloadRows(rows, sheetName, campaign, type) {
+  const XLSX = await import('xlsx'); // loaded only when downloading
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName);

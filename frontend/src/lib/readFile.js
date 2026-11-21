@@ -1,11 +1,10 @@
-import * as XLSX from 'xlsx';
-
 /**
  * Reads the first sheet of a CSV/XLS/XLSX file into row objects.
  * CSV is read as plain text so "05/11/2026" is not mis-read as 11 May;
  * Excel date cells come back as Date objects (cellDates).
  */
-export function readSpreadsheetFile(file) {
+export async function readSpreadsheetFile(file) {
+  const XLSX = await import('xlsx'); // loaded only when a file is picked
   return new Promise((resolve, reject) => {
     const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
     const rd = new FileReader();
