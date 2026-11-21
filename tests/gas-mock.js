@@ -129,7 +129,7 @@
   var props = {};
   root.PropertiesService = {
     getScriptProperties: function () {
-      return { getProperty: function (k) { return props.hasOwnProperty(k) ? props[k] : null; }, setProperty: function (k, v) { props[k] = String(v); } };
+      return { getProperty: function (k) { return props.hasOwnProperty(k) ? props[k] : null; }, setProperty: function (k, v) { props[k] = String(v); }, deleteProperty: function (k) { delete props[k]; } };
     }
   };
 

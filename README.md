@@ -137,5 +137,6 @@ The first row must be the headers; capital letters don't matter. You always see 
 | Script changes don't show up | Deploy a **new version** (see the note under step 4). |
 | Forgot the admin PIN | In `Setup.gs`, set `ADMIN_PHONE` to the admin's phone and `ADMIN_PIN` to a new PIN, then run **`resetAdminPin`**. |
 | "Too many wrong PINs" | Wait 15 minutes. |
+| "This account is locked" | 10 wrong PINs in 24 hours. An admin opens **Teams & users → Locked accounts → Unlock** (and sets a new PIN if needed). If the only admin is locked: in `Setup.gs` set `ADMIN_PHONE` and a new `ADMIN_PIN`, then run **`resetAdminPin`**. |
 
 More detail: [docs/01-sheets-and-api.md](docs/01-sheets-and-api.md) (sheet columns and API), [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) (assumptions and limits), [docs/TEST-CHECKLIST.md](docs/TEST-CHECKLIST.md) (tests).

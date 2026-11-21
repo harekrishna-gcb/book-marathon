@@ -20,9 +20,14 @@ export default function Users({ ctx }) {
   const [adding, setAdding] = useState(false);
   const formRef = useRef();
   const pending = users.filter((u) => !u.approved && canEdit(me, u));
+  const locked = isAdmin ? users.filter((u) => u.locked) : [];
 
   const startEdit = (u) => { setEditing(u); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); };
 
+  const unlock = async (u) => {
+    try { apply({ users: await api.call('saveUser', { id: u.id, unlock: true }) }); toast(`${u.name} unlocked: they can log in again`); }
+    catch (e) { toast(e.message, true); }
+  };
   const approve = async (u) => {
     try { apply({ users: await api.call('saveUser', { id: u.id, approved: true }) }); toast(`${u.name} approved ✓` + (u.has_pin ? '' : ': set a PIN so they can log in')); }
     catch (e) { toast(e.message, true); }
@@ -49,6 +54,19 @@ export default function Users({ ctx }) {
       <PageHead title="Teams & users" sub={`${users.length} registered${pending.length ? ` · ${pending.length} waiting for approval` : ''}`}>
         {(isAdmin || isLead) && !editing && !adding && <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />{isAdmin ? 'Add person / team' : 'Add team member'}</button>}
       </PageHead>
+      {locked.length > 0 && (
+        <div className="card" style={{ borderColor: 'color-mix(in srgb, var(--err) 40%, var(--bd))' }}>
+          <CardHead icon="key" title={`Locked accounts (${locked.length})`} />
+          <Table head={['Name', 'Type', 'Phone', '']}
+            rows={locked.map((u) => (
+              <tr key={u.id}>
+                <td>{u.name}</td><td>{u.type}</td><td>{u.phone || '—'}</td>
+                <td><BusyButton className="btn g" busyText="…" onClick={() => unlock(u)}>Unlock</BusyButton></td>
+              </tr>
+            ))} />
+          <p className="mu">These accounts had 10 wrong PINs within 24 hours. If the person forgot their PIN, use Edit to set a new one, then Unlock. If it wasn’t them, someone may be guessing: consider giving them a new PIN anyway.</p>
+        </div>
+      )}
       {pending.length > 0 && (isAdmin || isLead) && (
         <div className="card">
           <CardHead icon="userCheck" title={`Waiting for approval (${pending.length})`} />
@@ -93,7 +111,7 @@ function UserList({ ctx, onEdit, onRemove, onDelete }) {
         empty={users.length ? `Nobody matches “${q}”.` : 'Nobody registered yet.'}
         rows={list.map((u) => (
           <tr key={u.id} className={u.id === me.id ? 'me' : undefined}>
-            <td>{u.name}{!u.approved && <> <Tag kind="warn">pending</Tag></>}{isAdmin && !u.has_pin && <> <Tag title="Cannot log in until a PIN is set">no PIN</Tag></>}</td>
+            <td>{u.name}{!u.approved && <> <Tag kind="warn">pending</Tag></>}{u.locked && <> <Tag kind="warn" title="Too many wrong PINs">🔒 locked</Tag></>}{isAdmin && !u.has_pin && <> <Tag title="Cannot log in until a PIN is set">no PIN</Tag></>}</td>
             <td>{u.type}</td><td>{u.role}</td>
             <td>{u.type === 'Team' ? '—' : (byId[u.team_id] || {}).name || ''}</td>
             <td>{u.phone === undefined ? '•••' : u.phone}</td>

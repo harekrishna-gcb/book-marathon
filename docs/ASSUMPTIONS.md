@@ -16,7 +16,12 @@
 - **One writer at a time.** Writes queue behind a script lock. If the lock can't be had within 25 seconds, the user sees "server is busy" and the app retries once. This is fine for dozens of volunteers saving at the same time, but not for thousands.
 - **Quotas** (free Google account): about 20,000 URL fetches/day and 90 minutes of total script run time/day. A busy campaign day with 50 volunteers stays well within this.
 - **Sessions last 6 hours**, because that is CacheService's longest expiry. Then you log in again. If Google clears the cache early (rare), you also need to log in again.
-- **PIN security.** A 4–6 digit PIN is weak by nature. Defences: 5 wrong tries locks that login for 15 minutes; hashes are salted, stretched and peppered; the sheet stays private. Don't reuse a bank PIN.
+- **PIN security.** A 4–6 digit PIN is weak by nature. Defences:
+  - Wrong PINs are counted per account.
+  - 5 wrong tries pause logins for 15 minutes; 10 within 24 hours **lock the account** until an admin unlocks it (Teams & users → Locked accounts → Unlock).
+  - PIN hashes are salted, stretched and peppered, and the sheet stays private.
+  - Don't reuse a bank PIN.
+- **Locks can be triggered on purpose.** Anyone who knows a volunteer's phone number can lock their account with 10 wrong PINs; that's the price of stopping guessing. Someone already logged in stays logged in. A locked sole admin can recover by running `resetAdminPin` in the Apps Script editor.
 - **Changes made directly in the sheet** show up within about 10 seconds, after the cache expires. Don't rename the header row. Don't type over `id` columns.
 - **Other people's changes** don't push to your screen. Press ↻ Refresh, or switch tabs after a minute.
 - **Exports** contain only what your role can see. A seller's sales export holds only their own sales.

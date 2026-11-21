@@ -22,6 +22,7 @@ won't break anything. Do not rename the headers.
 | approved     | `TRUE` / `FALSE`         | registrations start as FALSE |
 | created_at   | `2026-11-21T10:30:00Z`   | |
 | **team_id**  | `u_team01`               | **added**: which team a person belongs to (empty = none). Needed so a lead can manage "their team" |
+| **locked_at** | ISO timestamp           | **added**: set after 10 wrong PINs in 24 hours; empty = not locked. Added automatically to older sheets |
 
 ### Books
 | column            | example                  |
@@ -98,7 +99,7 @@ Every response is JSON:
 | `deleteSale`  | logged in      | id | sales, books |
 | `uploadSales` | admin          | rows[≤500] `{row,book,quantity,soldBy,area,date}` | imported/skipped/newSellers, sales, books |
 | `listUsers`   | logged in      | – | users the caller may see (phones only where allowed) |
-| `saveUser`    | admin, lead    | id?, name, type, phone, members, role, approved, team_id, pin? | users |
+| `saveUser`    | admin, lead    | id?, name, type, phone, members, role, approved, team_id, pin?, unlock? (admin only) | users |
 | `deleteUser`  | admin          | id | users (their sales are deleted too, same as the prototype) |
 | `dashboard`   | logged in      | from?, to? | totals, byBook, byCategory, bySeller, byArea |
 | `leaderboard` | logged in      | by (`books`/`rupees`), type (`all`/`Person`/`Team`), from?, to? | ranked rows |

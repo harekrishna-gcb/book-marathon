@@ -207,7 +207,8 @@ export default function App() {
   }
 
   const ready = me && me.id && !booting && !loadError;
-  const pending = data.users.filter((u) => !u.approved).length;
+  // Badge: registrations waiting for approval, plus (admins) accounts locked by wrong PINs.
+  const pending = data.users.filter((u) => !u.approved || u.locked).length;
   const showBadge = me && (me.role === 'admin' || me.role === 'lead') && pending > 0;
   const current = TABS.find((t) => t.key === tab);
 

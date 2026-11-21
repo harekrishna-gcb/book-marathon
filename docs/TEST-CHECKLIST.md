@@ -39,7 +39,8 @@ Run `setup()` and `seed()` first. All seeded users have PIN `1111`; the admin us
 
 **Logins and roles**
 - [ ] Register a new volunteer: they can't log in until an admin approves them.
-- [ ] 5 wrong PINs: locked for 15 minutes.
+- [ ] 5 wrong PINs: logins paused for 15 minutes (also when switching between phone and name).
+- [ ] 10 wrong PINs within a day: "This account is locked". The account appears under Teams & users → Locked accounts; Unlock lets the person log in again.
 - [ ] Seller: sees only their own sales; "Sold by" is fixed to themself; no book editing; no phone numbers of others.
 - [ ] Lead: sees their team's sales; can add a member; can't edit people outside the team.
 - [ ] Admin un-approves a logged-in user: that user's next action sends them to the login screen.

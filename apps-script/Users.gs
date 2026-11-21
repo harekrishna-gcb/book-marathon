@@ -97,6 +97,10 @@ function saveUser(p, me) {
     else applyAdminEdit(u, p, me, byId);
 
     if (p.pin) { assertPinFormat(p.pin); u.pin_hash = makePinHash(String(p.pin)); }
+    if (p.unlock) {
+      requireRole(me, ['admin']); // only admins can unlock
+      unlockAccountRow(u);
+    }
     assertUnique(users, u.id, u.name, u.phone);
 
     if (existing) updateObjects('Users', [u]); else appendObjects('Users', [u]);

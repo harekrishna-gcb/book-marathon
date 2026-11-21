@@ -14,7 +14,7 @@ var CACHE_CHUNK_CHARS = 25000; // CacheService values max out at 100 KB; stay we
 
 /** Column definitions. Type: s = text, n = number, b = TRUE/FALSE, d = date as yyyy-mm-dd text. */
 var SCHEMA = {
-  Users: { id: 's', name: 's', type: 's', phone: 's', members: 's', role: 's', pin_hash: 's', approved: 'b', created_at: 's', team_id: 's' },
+  Users: { id: 's', name: 's', type: 's', phone: 's', members: 's', role: 's', pin_hash: 's', approved: 'b', created_at: 's', team_id: 's', locked_at: 's' },
   Books: { id: 's', title: 's', category: 's', price: 'n', quantity_received: 'n', updated_at: 's' },
   Sales: { id: 's', book_id: 's', quantity: 'n', user_id: 's', area: 's', sale_date: 'd', created_at: 's', created_by: 's' },
   Config: { key: 's', value: 's' }
@@ -107,6 +107,15 @@ function objectToRow(headers, obj, existingRow) {
     if (obj.hasOwnProperty(h)) return toCell(obj[h]);
     return existingRow ? toCell(existingRow[i]) : ''; // keep user-added extra columns untouched
   });
+}
+
+/** Adds a header column if the sheet does not have it yet (for sheets made before an upgrade). */
+function ensureColumn(name, col) {
+  var headers = headerRow(name);
+  if (headers.indexOf(col) >= 0) return;
+  var sh = getSheet(name);
+  sh.getRange(1, headers.length + 1).setValues([[col]]);
+  sh.getRange(1, headers.length + 1, sh.getMaxRows(), 1).setNumberFormat('@');
 }
 
 /** Appends objects as new rows in one setValues() call. */

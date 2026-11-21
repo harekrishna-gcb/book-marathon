@@ -113,7 +113,7 @@ function seed() {
 }
 
 /**
- * Forgot the admin PIN? Put the admin's phone in ADMIN_PHONE and a new PIN in ADMIN_PIN
+ * Forgot the admin PIN, or the admin account got locked? Put the admin's phone in ADMIN_PHONE and a new PIN in ADMIN_PIN
  * above, then run this. It also re-approves that user and makes them admin.
  */
 function resetAdminPin() {
@@ -125,6 +125,7 @@ function resetAdminPin() {
     u.pin_hash = makePinHash(ADMIN_PIN);
     u.role = 'admin';
     u.approved = true;
+    unlockAccountRow(u); // also clears a lock from too many wrong PINs
     updateObjects('Users', [u]);
     markChanged('Users');
     CacheService.getScriptCache().remove('fail:' + normPhone(ADMIN_PHONE));

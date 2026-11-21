@@ -79,7 +79,7 @@ section('Login, sessions, throttling');
   for (let i = 0; i < 5; i++) api('login', { id: 'Admin', pin: '0000' });
   const locked = api('login', { id: 'Admin', pin: '1234' });
   ok(!locked.ok && /Too many/.test(locked.error), 'locked after 5 wrong PINs', locked);
-  CacheService.getScriptCache().remove('fail:admin');
+  clearDailyFailures(readSheetObjects('Users').find(u => u.role === 'admin').id);
   const t = must('login', { id: 'Admin', pin: '1234' }).token;
   must('logout', {}, t);
   ok(api('me', {}, t).code === 'AUTH', 'token dead after logout');
@@ -394,12 +394,59 @@ section('Config, delete cascades, bootstrap');
   ok(api('changePin', { oldPin: 'nope', newPin: '1234' }, gopal).error.includes('current PIN'), 'wrong old PIN rejected');
 }
 
+section('Account lock after 10 wrong PINs in a day');
+{
+  const sid = must('saveUser', { name: 'Lockme', phone: '9666666666', pin: '1357' }, admin).find(u => u.name === 'Lockme').id;
+  const sess = must('login', { id: 'Lockme', pin: '1357' }).token;   // an already-open session
+  // 5 wrong by phone, then the 15-minute pause applies to the NAME too (same account).
+  for (let i = 0; i < 5; i++) api('login', { id: '9666666666', pin: '0000' });
+  ok(/wait 15 minutes/.test(api('login', { id: 'lockme', pin: '1357' }).error), 'phone and name share the per-account counter');
+  CacheService.getScriptCache().remove('fail:u:' + sid);               // pretend 15 minutes passed
+  const r9 = [];
+  for (let i = 0; i < 4; i++) r9.push(api('login', { id: 'Lockme', pin: '0000' }).error);
+  ok(/1 more wrong PIN and this account will be locked/.test(r9[3]), 'warning before the lock', r9[3]);
+  const r10 = api('login', { id: 'Lockme', pin: '0000' });
+  ok(r10.code === 'FORBIDDEN' && /locked/.test(r10.error), '10th wrong PIN locks the account', r10);
+  CacheService.getScriptCache().remove('fail:u:' + sid);
+  ok(/locked/.test(api('login', { id: 'Lockme', pin: '1357' }).error), 'correct PIN refused while locked');
+  ok(readSheetObjects('Users').find(u => u.id === sid).locked_at !== '', 'lock stored in the sheet (survives cache loss)');
+  resetMemo();
+  ok(api('me', {}, sess).ok, 'an already-logged-in session keeps working');
+  ok(must('listUsers', {}, admin).find(u => u.id === sid).locked === true, 'admin sees the lock');
+  ok(must('listUsers', {}, sess).every(u => u.locked === undefined), 'non-admins do not see lock status');
+  must('saveUser', { name: 'Lock Team', type: 'Team', phone: '9777777777', role: 'lead', pin: '2580', approved: true }, admin);
+  const leadT = must('login', { id: '9777777777', pin: '2580' }).token;
+  must('saveUser', { id: sid, team_id: readSheetObjects('Users').find(u => u.name === 'Lock Team').id }, admin);
+  ok(api('saveUser', { id: sid, unlock: true }, leadT).code === 'FORBIDDEN', 'lead cannot unlock (even own team member)');
+  must('saveUser', { id: sid, unlock: true }, admin);
+  ok(api('login', { id: 'Lockme', pin: '1357' }).ok, 'admin unlock lets the user log in');
+  ok(must('listUsers', {}, admin).find(u => u.id === sid).locked === false, 'lock cleared');
+  ok(!PropertiesService.getScriptProperties().getProperty('pinfails:' + sid), 'wrong-PIN counter cleared on success');
+  // Correct PIN before the 10th resets the daily count.
+  for (let i = 0; i < 4; i++) api('login', { id: 'Lockme', pin: '0000' });
+  must('login', { id: 'Lockme', pin: '1357' });
+  for (let i = 0; i < 4; i++) api('login', { id: 'Lockme', pin: '0000' });
+  ok(!/account is locked/.test(api('login', { id: 'Lockme', pin: '0000' }).error), 'a successful login resets the count');
+  // Old sheet without the locked_at column still locks (column added on the fly).
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+  const col = sh.data[0].indexOf('locked_at');
+  sh.data.forEach(r => r.splice(col, 1));
+  CacheService.getScriptCache().remove('fail:u:' + sid);
+  clearDailyFailures(sid); resetMemo(); CacheService._clear();
+  for (let i = 0; i < 10; i++) { api('login', { id: 'Lockme', pin: '0000' }); CacheService.getScriptCache().remove('fail:u:' + sid); }
+  ok(sh.data[0].includes('locked_at') && /locked/.test(api('login', { id: 'Lockme', pin: '1357' }).error), 'locked_at column added automatically on old sheets');
+  admin = must('login', { id: '9000000000', pin: '1234' }).token;
+}
+
 section('resetAdminPin');
 {
+  const aid = readSheetObjects('Users').find(u => u.role === 'admin').id;
+  for (let i = 0; i < 10; i++) { api('login', { id: '9000000000', pin: '0000' }); CacheService.getScriptCache().remove('fail:u:' + aid); }
+  ok(/locked/.test(api('login', { id: '9000000000', pin: '1234' }).error), 'admin can be locked too');
   ADMIN_PIN = '2468';
   resetAdminPin();
   resetMemo();
-  ok(api('login', { id: '9000000000', pin: '2468' }).ok, 'admin PIN reset works');
+  ok(api('login', { id: '9000000000', pin: '2468' }).ok, 'resetAdminPin sets the PIN and unlocks the admin');
   ADMIN_PIN = '1234';
 }
 
